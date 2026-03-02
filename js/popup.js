@@ -1,23 +1,35 @@
 var m3u8list = {};
 const bgPort = chrome.runtime.connect();
+var currentTabId = null;
 
 $(function(){
-    render(m3u8list)
+    render(m3u8list);
+
+    // Resolve the active tab first, then request its URL list
+    chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
+        if (tabs.length > 0) {
+            currentTabId = tabs[0].id;
+            bgPort.postMessage({action: 'getList', tabId: currentTabId});
+        }
+    });
+
     chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         if(request.from == 'content_script' && request.reload == 'done'){
-            bgPort.postMessage({action:'getList'});
+            if (currentTabId !== null) {
+                bgPort.postMessage({action: 'getList', tabId: currentTabId});
+            }
         }
         return true;
     });
+
     bgPort.onMessage.addListener(function(receivedPortMsg) {
-        if(receivedPortMsg.action = 'm3u8List'){
+        if(receivedPortMsg.action == 'm3u8List'){
             if(receivedPortMsg.data){
-                m3u8list = receivedPortMsg.data
-                render(m3u8list)
+                m3u8list = receivedPortMsg.data;
+                render(m3u8list);
             }
         }
-	});
-    bgPort.postMessage({action:'getList'});
+    });
 })
 
 $(document).ready(function() {
@@ -33,11 +45,11 @@ function reload(){
 
 function render(list){
     if(list !== undefined){
-        if(list.length==0){
+        if(Object.keys(list).length == 0){
             $(".alert-danger").addClass("show")
             $(".alert-danger").removeAttr("hidden")
         }else{
-            $("#box").html()
+            $("#box").empty()
             for (url in list) {
                 let cmd = `yt-dlp '${url}' -o '${list[url].title}.mp4' --refer '${list[url].url}'`
                 $('<div style="display:flex;justify-content:space-between;font-family:ui-monospace,Consolas,monospace;cursor:pointer;background-color:#aea;align-items:flex-start;font-size:11px;width:480px;margin-bottom:2px;">'

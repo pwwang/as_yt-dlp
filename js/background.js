@@ -1,29 +1,41 @@
-var msg = {}
-msg.m3u8list = {}
-var pattern = /\.m3u8$|\.mp4$/
-var url = ""
-var the_details
+// Per-tab URL store: { [tabId]: { m3u8list: { [url]: tabObject } } }
+var tabData = {};
+var pattern = /\.m3u8$|\.mp4$/;
 
 chrome.webRequest.onBeforeRequest.addListener(details => {
-    chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
-        const tab = tabs[tabs.length - 1]
-        if (url != tab.url) {
-            msg.m3u8list = {}
-        }
-        url = tab.url
+    const tabId = details.tabId;
+    if (tabId < 0) return; // ignore requests not associated with a tab
 
-        var tmp = new URL(details.url).pathname
-        if (pattern.test(tmp)) {
-            msg.m3u8list[details.url] = tab
-        }
-    });
+    var tmp = new URL(details.url).pathname;
+    if (pattern.test(tmp)) {
+        chrome.tabs.get(tabId, function(tab) {
+            if (chrome.runtime.lastError) return;
+            if (!tabData[tabId]) {
+                tabData[tabId] = { m3u8list: {} };
+            }
+            tabData[tabId].m3u8list[details.url] = tab;
+        });
+    }
 }, { urls: ["<all_urls>"] }, ["extraHeaders"]);
 
-chrome.runtime.onConnect.addListener(function (port) {
-    port.onMessage.addListener(function (receivedMsg) {
+// Clear a tab's captured URLs when it navigates to a new page
+chrome.tabs.onUpdated.addListener(function(tabId, changeInfo) {
+    if (changeInfo.status === 'loading' && changeInfo.url) {
+        tabData[tabId] = { m3u8list: {} };
+    }
+});
+
+// Remove stored data when a tab is closed
+chrome.tabs.onRemoved.addListener(function(tabId) {
+    delete tabData[tabId];
+});
+
+chrome.runtime.onConnect.addListener(function(port) {
+    port.onMessage.addListener(function(receivedMsg) {
         if (receivedMsg.action == 'getList') {
-            //console.log("bg send:" + msg.toString())
-            port.postMessage({ action: 'm3u8List', 'data': msg.m3u8list })
+            const tabId = receivedMsg.tabId;
+            const data = (tabData[tabId] && tabData[tabId].m3u8list) || {};
+            port.postMessage({ action: 'm3u8List', data: data });
         }
-    })
+    });
 });
