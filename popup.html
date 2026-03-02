@@ -27,8 +27,11 @@
     <div class="alert alert-success fade hide" style="padding:5px 20px 5px 20px;line-height:14px;font-size: 14px;" hidden>
         Copied!
     </div>
-    <div class="alert alert-danger fade hide" style="padding:5px 20px 5px 20px;line-height:14px;font-size: 14px;" hidden>
-        Reopen the extension or <button type="button" class="btn btn-link btn-sm" id="reload">reload the page</button>！
+    <div id="alert-empty" class="alert alert-warning fade hide" style="padding:5px 20px 5px 20px;line-height:14px;font-size: 14px;" hidden>
+        No streams detected on this page.
+    </div>
+    <div id="alert-error" class="alert alert-danger fade hide" style="padding:5px 20px 5px 20px;line-height:14px;font-size: 14px;" hidden>
+        Could not capture streams — try <button type="button" class="btn btn-link btn-sm" id="reload">reloading the page</button>.
     </div>
 </body>
 </html>

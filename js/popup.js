@@ -3,7 +3,8 @@ const bgPort = chrome.runtime.connect();
 var currentTabId = null;
 
 $(function(){
-    render(m3u8list);
+    // Do NOT render immediately — wait for the background response so
+    // the error alert doesn't flash before data has had a chance to load.
 
     // Resolve the active tab first, then request its URL list
     chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
@@ -24,10 +25,8 @@ $(function(){
 
     bgPort.onMessage.addListener(function(receivedPortMsg) {
         if(receivedPortMsg.action == 'm3u8List'){
-            if(receivedPortMsg.data){
-                m3u8list = receivedPortMsg.data;
-                render(m3u8list);
-            }
+            m3u8list = receivedPortMsg.data || {};
+            render(m3u8list, receivedPortMsg.failed);
         }
     });
 })
@@ -43,13 +42,33 @@ function reload(){
       });
 }
 
-function render(list){
-    if(list !== undefined){
-        if(Object.keys(list).length == 0){
-            $(".alert-danger").addClass("show")
-            $(".alert-danger").removeAttr("hidden")
-        }else{
-            $("#box").empty()
+// Show the "nothing detected" warning (yellow), hide the error alert
+function showEmpty() {
+    $("#alert-empty").addClass("show").removeAttr("hidden");
+    $("#alert-error").removeClass("show").attr("hidden", "hidden");
+}
+
+// Show the "try reloading" error (red), hide the empty alert
+function showError() {
+    $("#alert-error").addClass("show").removeAttr("hidden");
+    $("#alert-empty").removeClass("show").attr("hidden", "hidden");
+}
+
+function hideAlerts() {
+    $("#alert-empty, #alert-error").removeClass("show").attr("hidden", "hidden");
+}
+
+function render(list, failed) {
+    if (failed) {
+        showError();
+        return;
+    }
+    if (list !== undefined) {
+        if (Object.keys(list).length == 0) {
+            showEmpty();
+        } else {
+            hideAlerts();
+            $("#box").empty();
             for (url in list) {
                 let cmd = `yt-dlp '${url}' -o '${list[url].title}.mp4' --refer '${list[url].url}'`
                 $('<div style="display:flex;justify-content:space-between;font-family:ui-monospace,Consolas,monospace;cursor:pointer;background-color:#aea;align-items:flex-start;font-size:11px;width:480px;margin-bottom:2px;">'
@@ -59,8 +78,6 @@ function render(list){
                     .appendTo("#box")
                     .click({ "cmd": cmd }, copyCmd);
             }
-            $(".alert-danger").removeClass("show")
-            $(".alert-danger").attr("hidden","hidden")
         }
     }
 }

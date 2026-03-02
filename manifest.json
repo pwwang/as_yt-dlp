@@ -1,7 +1,7 @@
 {
     "name": "as_yt-dlp",
     "description": "Streams as yt-dlp commands for downloading",
-    "version": "0.0.0",
+    "version": "0.1.0",
     "manifest_version": 3,
     "action": {
         "default_popup": "popup.html"
@@ -15,7 +15,8 @@
     "permissions":[
         "tabs",
         "webRequest",
-        "activeTab"
+        "activeTab",
+        "storage"
     ],
     "host_permissions": [
         "*://*/*"
